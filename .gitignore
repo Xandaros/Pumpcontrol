@@ -1,0 +1,4 @@
+!.gitignore
+dist/
+.cabal-sandbox/
+cabal.sandbox.config

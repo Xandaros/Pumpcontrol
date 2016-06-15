@@ -1,9 +1,12 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE OverloadedStrings #-}
 module Types where
 
-import Data.Aeson.Types
+import Data.Aeson
 import GHC.Generics
+import Servant.Utils.Links (URI)
 
 data Pump = Pump { name :: String
                  , description :: String
@@ -41,3 +44,14 @@ data BatterySchedule = BatterySchedule { lowBelow :: Int
 
 instance ToJSON BatterySchedule
 instance FromJSON BatterySchedule
+
+data PostReturn a = PostReturn { ident :: Maybe Int
+                               , uri :: Maybe URI
+                               , datas :: a
+                               } deriving (Show)
+
+instance ToJSON a => ToJSON (PostReturn a) where
+    toJSON (PostReturn{..}) = object [ "id" .= ident
+                                     , "uri" .= (show <$> uri)
+                                     , "data" .= datas
+                                     ]

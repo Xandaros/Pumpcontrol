@@ -10,7 +10,9 @@ type API = "pumps"   :> PumpsAPI
       :<|> "battery" :> BatteryAPI
 
 type PumpsAPI = Get '[JSON] [Pump]
-           :<|> ReqBody '[JSON] Pump :> PostCreated '[JSON] (Int, Pump)
+           :<|> Header "Host" String
+             :> ReqBody '[JSON] Pump
+             :> PostCreated '[JSON] (PostReturn Pump)
            :<|> Capture "id" Int :> PumpAPI
 
 type PumpAPI = Get '[JSON] Pump
@@ -24,7 +26,9 @@ type PumpStateAPI = Get '[JSON] PumpState
                :<|> ReqBody '[JSON] PumpState :> Put '[JSON] PumpState --()?
 
 type PumpSchedulesAPI = Get '[JSON] [TimeSchedule]
-                   :<|> ReqBody '[JSON] TimeSchedule :> Post '[JSON] TimeSchedule
+                   :<|> Header "Host" String
+                     :> ReqBody '[JSON] TimeSchedule
+                     :> PostCreated '[JSON] (PostReturn TimeSchedule)
                    :<|> Capture "id" Int :> PumpScheduleAPI
 
 type PumpScheduleAPI = Get '[JSON] TimeSchedule

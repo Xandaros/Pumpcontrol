@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE TypeOperators #-}
 module Main (main) where
 import Control.Exception (finally)
 import Control.Monad (when)
@@ -8,6 +9,7 @@ import Data.Acid
 import qualified Data.IntMap as Map
 
 import Servant
+import Network.URI (URIAuth(..), relativeTo, nullURI)
 import Network.Wai
 import Network.Wai.Handler.Warp
 
@@ -67,7 +69,35 @@ pumpsGET = do
     pumps <- liftIO $ query state GetPumps
     pure $ fmap snd (Map.toList pumps)
 
-pumpsPOST :: Pump -> MyHandler (Int, Pump)
-pumpsPOST pump = do
+pumpsPOST :: Maybe String -> Pump -> MyHandler (PostReturn Pump)
+pumpsPOST host pump = do
     state <- ask
-    liftIO $ update state (AddPump pump)
+    (ident, pump) <- liftIO $ update state (AddPump pump)
+    let endpoint = Proxy :: Proxy ("pumps"
+                                :> Capture "id" Int
+                                :> Get '[JSON] Pump)
+        uri = apiURI endpoint ident
+
+    pure $ postReturn uri host (Just ident) pump
+
+-- Util
+
+apiURI :: (IsElem endpoint API, HasLink endpoint)
+       => Proxy endpoint -> MkLink endpoint
+apiURI = safeLink (Proxy :: Proxy API)
+
+postReturn :: URI -> Maybe String -> Maybe Int -> a -> PostReturn a
+postReturn uri host ident datas =
+    PostReturn{ ident = ident
+              , uri   = Just (uri `relativeTo` baseURI)
+              , datas = datas
+              }
+    where
+       baseURI = let auth = URIAuth "" <$> hostPart <*> portPart
+                     hostPart = takeWhile (/=':') <$> host
+                     portPart = dropWhile (/=':') <$> host
+                 in  case host of
+                   Nothing -> nullURI
+                   Just _  -> nullURI{ uriScheme = "http:"
+                                     , uriAuthority = auth
+                                     }

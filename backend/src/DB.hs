@@ -29,9 +29,9 @@ defaultSchema = Schema { pumps           = mempty
 
 defaultBatterySchedule :: BatterySchedule
 defaultBatterySchedule= BatterySchedule { lowBelow       = 30
-                                         , criticalBelow = 20
-                                         , highAbove     = 90
-                                         }
+                                        , criticalBelow = 20
+                                        , highAbove     = 90
+                                        }
 
 getPumps :: Query Schema (Map.IntMap Pump)
 getPumps = asks pumps

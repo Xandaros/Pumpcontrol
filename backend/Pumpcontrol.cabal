@@ -25,6 +25,7 @@ executable Pumpcontrol
                        aeson,
                        containers,
                        mtl,
+                       network-uri,
                        safecopy,
                        servant,
                        servant-server,

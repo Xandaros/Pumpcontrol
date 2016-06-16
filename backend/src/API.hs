@@ -2,6 +2,7 @@
 {-# LANGUAGE DataKinds #-}
 
 module API where
+import qualified Data.IntMap as Map
 import Servant
 
 import Types
@@ -9,7 +10,7 @@ import Types
 type API = "pumps"   :> PumpsAPI
       :<|> "battery" :> BatteryAPI
 
-type PumpsAPI = Get '[JSON] [Pump]
+type PumpsAPI = Get '[JSON] (Map.IntMap Pump)
            :<|> Header "Host" String
              :> ReqBody '[JSON] Pump
              :> PostCreated '[JSON] (PostReturn Pump)

@@ -1,9 +1,11 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE LambdaCase #-}
 module Main (main) where
 import Control.Exception (finally)
-import Control.Monad (when)
-import Control.Monad.Trans (liftIO)
+import Control.Monad (when, (<=<))
+import Control.Monad.Trans (liftIO, lift)
+import Control.Monad.Trans.Except (throwE)
 import Control.Monad.Trans.Reader
 import Data.Acid
 import qualified Data.IntMap as Map
@@ -42,11 +44,12 @@ pumpsServer :: MyServer PumpsAPI
 pumpsServer = pumpsGET :<|> pumpsPOST :<|> pumpServer
 
 pumpServer :: Int -> MyServer PumpAPI
-pumpServer pumpid = _pumpGET :<|> _pumpPUT :<|> _pumpDELETE
-               :<|> pumpStateServer pumpid :<|> pumpSchedulesServer pumpid
+pumpServer pumpid = pumpGET pumpid :<|> pumpPUT pumpid
+               :<|> pumpDELETE pumpid :<|> pumpStateServer pumpid
+               :<|> pumpSchedulesServer pumpid
 
 pumpStateServer :: Int -> MyServer PumpStateAPI
-pumpStateServer pumpid = _pumpStateGET :<|> _pumpStatePUT
+pumpStateServer pumpid = pumpStateGET pumpid :<|> pumpStatePUT pumpid
 
 pumpSchedulesServer :: Int -> MyServer PumpSchedulesAPI
 pumpSchedulesServer pumpid = _pumpSchedulesGET :<|> _pumpSchedulesPOST
@@ -63,16 +66,14 @@ batteryBlockServer :: MyServer BatteryBlockAPI
 batteryBlockServer = _batteryBlockGET :<|> _batteryBlockPUT
 
 -- Implementations
-pumpsGET :: MyHandler [Pump]
-pumpsGET = do
-    state <- ask
-    pumps <- liftIO $ query state GetPumps
-    pure $ fmap snd (Map.toList pumps)
+
+pumpsGET :: MyHandler (Map.IntMap Pump)
+pumpsGET = queryState GetPumps
 
 pumpsPOST :: Maybe String -> Pump -> MyHandler (PostReturn Pump)
 pumpsPOST host pump = do
-    state <- ask
-    (ident, pump) <- liftIO $ update state (AddPump pump)
+    (ident, pump) <- updateState (AddPump pump)
+    updateState (SetPumpState ident Off)
     let endpoint = Proxy :: Proxy ("pumps"
                                 :> Capture "id" Int
                                 :> Get '[JSON] Pump)
@@ -80,7 +81,44 @@ pumpsPOST host pump = do
 
     pure $ postReturn uri host (Just ident) pump
 
+pumpGET :: Int -> MyHandler Pump
+pumpGET pump = queryState (GetPump pump) >>= \case
+    Just pump -> pure pump
+    Nothing -> lift $ throwE err404
+
+pumpPUT :: Int -> Pump -> MyHandler Pump
+pumpPUT ident pump = updateState (SetPump ident pump) *> pure pump
+
+pumpDELETE :: Int -> MyHandler ()
+pumpDELETE pump = updateState (DeletePump pump)
+
+pumpStateGET :: Int -> MyHandler PumpState
+pumpStateGET = maybe404 <=< queryState . GetPumpState
+
+pumpStatePUT :: Int -> PumpState -> MyHandler PumpState
+pumpStatePUT pump state = updateState (SetPumpState pump state) *> pure state
+
 -- Util
+
+maybe404 :: Maybe a -> MyHandler a
+maybe404 Nothing = lift $ throwE err404
+maybe404 (Just x) = pure x
+
+queryState
+    :: (QueryEvent event)
+    => event
+    -> ReaderT (AcidState (EventState event)) Handler (EventResult event)
+queryState ev = do
+    state <- ask
+    liftIO $ query state ev
+
+updateState
+    :: (UpdateEvent event)
+    => event
+    -> ReaderT (AcidState (EventState event)) Handler (EventResult event)
+updateState ev = do
+    state <- ask
+    liftIO $ update state ev
 
 apiURI :: (IsElem endpoint API, HasLink endpoint)
        => Proxy endpoint -> MkLink endpoint

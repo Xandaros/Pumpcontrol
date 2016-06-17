@@ -4,6 +4,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Types where
 
+import qualified Data.IntMap as Map
+
 import Data.Aeson
 import GHC.Generics
 import Servant.Utils.Links (URI)
@@ -11,6 +13,7 @@ import Servant.Utils.Links (URI)
 data Pump = Pump { name :: String
                  , description :: String
                  , gpio :: Int
+                 , schedules :: Map.IntMap TimeSchedule
                  } deriving (Generic)
 
 instance ToJSON Pump

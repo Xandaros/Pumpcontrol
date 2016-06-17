@@ -26,7 +26,7 @@ type PumpAPI = Get '[JSON] Pump
 type PumpStateAPI = Get '[JSON] PumpState
                :<|> ReqBody '[JSON] PumpState :> Put '[JSON] PumpState --()?
 
-type PumpSchedulesAPI = Get '[JSON] [TimeSchedule]
+type PumpSchedulesAPI = Get '[JSON] (Map.IntMap TimeSchedule)
                    :<|> Header "Host" String
                      :> ReqBody '[JSON] TimeSchedule
                      :> PostCreated '[JSON] (PostReturn TimeSchedule)

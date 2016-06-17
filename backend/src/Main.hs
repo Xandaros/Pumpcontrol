@@ -52,12 +52,14 @@ pumpStateServer :: Int -> MyServer PumpStateAPI
 pumpStateServer pumpid = pumpStateGET pumpid :<|> pumpStatePUT pumpid
 
 pumpSchedulesServer :: Int -> MyServer PumpSchedulesAPI
-pumpSchedulesServer pumpid = _pumpSchedulesGET :<|> _pumpSchedulesPOST
+pumpSchedulesServer pumpid = pumpSchedulesGET pumpid
+                        :<|> pumpSchedulesPOST pumpid
                         :<|> pumpScheduleServer pumpid
 
 pumpScheduleServer :: Int -> Int -> MyServer PumpScheduleAPI
-pumpScheduleServer pumpid schedid = _pumpScheduleAPI :<|> _pumpSchedulePUT
-                               :<|> _pumpScheduleDELETE
+pumpScheduleServer pumpid schedid = pumpScheduleGET pumpid schedid
+                               :<|> pumpSchedulePUT pumpid schedid
+                               :<|> pumpScheduleDELETE pumpid schedid
 
 batteryServer :: MyServer BatteryAPI
 batteryServer = _batteryGET :<|> _batteryPUT :<|> batteryBlockServer
@@ -97,6 +99,33 @@ pumpStateGET = maybe404 <=< queryState . GetPumpState
 
 pumpStatePUT :: Int -> PumpState -> MyHandler PumpState
 pumpStatePUT pump state = updateState (SetPumpState pump state) *> pure state
+
+pumpSchedulesGET :: Int -> MyHandler (Map.IntMap TimeSchedule)
+pumpSchedulesGET = maybe404 <=< queryState . GetPumpSchedules
+
+pumpSchedulesPOST :: Int -> Maybe String -> TimeSchedule -> MyHandler (PostReturn TimeSchedule)
+pumpSchedulesPOST pump host schedule = do
+    (ident, schedule) <- updateState (AddPumpSchedule pump schedule) >>= maybe404
+    let endpoint = Proxy :: Proxy ("pumps"
+                                :> Capture "id" Int
+                                :> "schedule"
+                                :> Capture "id" Int
+                                :> Get '[JSON] TimeSchedule
+                                    )
+        uri = apiURI endpoint pump ident
+    pure $ postReturn uri host (Just ident) schedule
+
+pumpScheduleGET :: Int -> Int -> MyHandler TimeSchedule
+pumpScheduleGET pump schedule =
+    queryState (GetPumpSchedule pump schedule) >>= maybe404
+
+pumpSchedulePUT :: Int -> Int -> TimeSchedule -> MyHandler TimeSchedule
+pumpSchedulePUT pumpid schedid schedule =
+    updateState (SetPumpSchedule pumpid schedid schedule) *> pure schedule
+
+pumpScheduleDELETE :: Int -> Int -> MyHandler ()
+pumpScheduleDELETE pump schedule = updateState (DeletePumpSchedule pump schedule)
+
 
 -- Util
 

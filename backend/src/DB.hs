@@ -1,6 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE LambdaCase #-}
 module DB where
 import Control.Monad.Reader
 import Control.Monad.State
@@ -14,7 +15,6 @@ import Types
 
 data Schema = Schema { pumps           :: Map.IntMap Pump
                      , pumpStates      :: Map.IntMap PumpState
-                     , pumpSchedules   :: Map.IntMap [TimeSchedule]
                      , batterySchedule :: BatterySchedule
                      , batteryBlock    :: Bool
                      } deriving (Typeable)
@@ -22,7 +22,6 @@ data Schema = Schema { pumps           :: Map.IntMap Pump
 defaultSchema :: Schema
 defaultSchema = Schema { pumps           = mempty
                        , pumpStates      = mempty
-                       , pumpSchedules   = mempty
                        , batterySchedule = defaultBatterySchedule
                        , batteryBlock    = False
                        }
@@ -72,6 +71,41 @@ setPumpState ident ps = do
     let newStates = Map.insert ident ps pstates
     modify(\x -> x{pumpStates=newStates})
 
+getPumpSchedules :: Int -> Query Schema (Maybe (Map.IntMap TimeSchedule))
+getPumpSchedules pumpid = do
+    pump <- getFromIntMap pumps pumpid
+    pure $ schedules <$> pump
+
+addPumpSchedule :: Int -> TimeSchedule -> Update Schema (Maybe (Int, TimeSchedule))
+addPumpSchedule pumpid schedule = liftQuery (getPump pumpid) >>= \case
+      Nothing   -> pure Nothing
+      Just pump -> do
+          let schedules' = schedules pump
+              key = case Map.maxViewWithKey schedules' of
+                       Just ((max,_),_) -> max+1
+                       Nothing          -> 0
+          setPumpSchedule pumpid key schedule
+          pure $ Just (key, schedule)
+
+getPumpSchedule :: Int -> Int -> Query Schema (Maybe TimeSchedule)
+getPumpSchedule pumpid scheduleid = (>>= Map.lookup scheduleid) . fmap schedules <$> getPump pumpid
+
+setPumpSchedule :: Int -> Int -> TimeSchedule -> Update Schema (Maybe ())
+setPumpSchedule pumpid scheduleid schedule = liftQuery (getPump pumpid) >>= \case
+    Nothing   -> pure Nothing
+    Just pump -> do
+        let schedules' = schedules pump
+            newSched = Map.insert scheduleid schedule schedules'
+        Just <$> setPump pumpid (pump{schedules=newSched})
+
+deletePumpSchedule :: Int -> Int -> Update Schema ()
+deletePumpSchedule pumpid schedid = liftQuery (getPump pumpid) >>= \case
+    Nothing -> pure ()
+    Just pump -> do
+        let schedules' = schedules pump
+            newSched = Map.delete schedid schedules'
+        setPump pumpid (pump{schedules=newSched})
+
 setBatteryBlock :: Bool -> Update Schema ()
 setBatteryBlock val = modify $ \x -> x{batteryBlock = val}
 
@@ -87,5 +121,10 @@ makeAcidic ''Schema [ 'getPumps
                     , 'deletePump
                     , 'getPumpState
                     , 'setPumpState
+                    , 'getPumpSchedules
+                    , 'addPumpSchedule
+                    , 'getPumpSchedule
+                    , 'setPumpSchedule
+                    , 'deletePumpSchedule
                     , 'setBatteryBlock
                     ]

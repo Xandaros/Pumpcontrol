@@ -106,8 +106,17 @@ deletePumpSchedule pumpid schedid = liftQuery (getPump pumpid) >>= \case
             newSched = Map.delete schedid schedules'
         setPump pumpid (pump{schedules=newSched})
 
+getBatterySchedule :: Query Schema BatterySchedule
+getBatterySchedule = asks batterySchedule
+
+setBatterySchedule :: BatterySchedule -> Update Schema ()
+setBatterySchedule sched = modify $ \x -> x{batterySchedule = sched}
+
 setBatteryBlock :: Bool -> Update Schema ()
 setBatteryBlock val = modify $ \x -> x{batteryBlock = val}
+
+getBatteryBlock :: Query Schema Bool
+getBatteryBlock = asks batteryBlock
 
 deriveSafeCopy 0 'base ''Schema
 deriveSafeCopy 0 'base ''Pump
@@ -126,5 +135,8 @@ makeAcidic ''Schema [ 'getPumps
                     , 'getPumpSchedule
                     , 'setPumpSchedule
                     , 'deletePumpSchedule
+                    , 'getBatterySchedule
+                    , 'setBatterySchedule
                     , 'setBatteryBlock
+                    , 'getBatteryBlock
                     ]

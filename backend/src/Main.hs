@@ -62,10 +62,10 @@ pumpScheduleServer pumpid schedid = pumpScheduleGET pumpid schedid
                                :<|> pumpScheduleDELETE pumpid schedid
 
 batteryServer :: MyServer BatteryAPI
-batteryServer = _batteryGET :<|> _batteryPUT :<|> batteryBlockServer
+batteryServer = batteryGET :<|> batteryPUT :<|> batteryBlockServer
 
 batteryBlockServer :: MyServer BatteryBlockAPI
-batteryBlockServer = _batteryBlockGET :<|> _batteryBlockPUT
+batteryBlockServer = batteryBlockGET :<|> batteryBlockPUT
 
 -- Implementations
 
@@ -126,6 +126,18 @@ pumpSchedulePUT pumpid schedid schedule =
 pumpScheduleDELETE :: Int -> Int -> MyHandler ()
 pumpScheduleDELETE pump schedule = updateState (DeletePumpSchedule pump schedule)
 
+
+batteryGET :: MyHandler BatterySchedule
+batteryGET = queryState GetBatterySchedule
+
+batteryPUT :: BatterySchedule -> MyHandler BatterySchedule
+batteryPUT sched = updateState (SetBatterySchedule sched) *> pure sched
+
+batteryBlockGET :: MyHandler Bool
+batteryBlockGET = queryState GetBatteryBlock
+
+batteryBlockPUT :: Bool -> MyHandler Bool
+batteryBlockPUT block = updateState (SetBatteryBlock block) *> pure block
 
 -- Util
 

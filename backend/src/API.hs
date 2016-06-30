@@ -10,7 +10,7 @@ import Types
 type API = "pumps"   :> PumpsAPI
       :<|> "battery" :> BatteryAPI
 
-type PumpsAPI = Get '[JSON] (Map.IntMap Pump)
+type PumpsAPI = Header "Host" String :> Get '[JSON] ([PostReturn  Pump])
            :<|> Header "Host" String
              :> ReqBody '[JSON] Pump
              :> PostCreated '[JSON] (PostReturn Pump)

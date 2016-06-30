@@ -1,4 +1,3 @@
-{-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -8,13 +7,13 @@ import qualified Data.IntMap as Map
 
 import Data.Aeson
 import GHC.Generics
-import Servant.Utils.Links (URI)
+import Network.URI (URI)
 
 data Pump = Pump { name :: String
                  , description :: String
                  , gpio :: Int
                  , schedules :: Map.IntMap TimeSchedule
-                 } deriving (Generic)
+                 } deriving (Generic, Show)
 
 instance ToJSON Pump
 instance FromJSON Pump
@@ -31,7 +30,7 @@ data TimeSchedule = TimeSchedule { startTime :: Time
                                  , rainBelow :: Maybe Int
                                  , lightAbove :: Maybe Int
                                  , lightBelow :: Maybe Int
-                                 } deriving (Generic)
+                                 } deriving (Generic, Show)
 
 instance ToJSON TimeSchedule
 instance FromJSON TimeSchedule
@@ -43,7 +42,7 @@ type Time = (Hours, Minutes)
 data BatterySchedule = BatterySchedule { lowBelow :: Int
                                        , criticalBelow :: Int
                                        , highAbove :: Int
-                                       } deriving (Generic)
+                                       } deriving (Generic, Show)
 
 instance ToJSON BatterySchedule
 instance FromJSON BatterySchedule

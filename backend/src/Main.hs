@@ -14,6 +14,7 @@ import Servant
 import Network.URI (URIAuth(..), relativeTo, nullURI)
 import Network.Wai
 import Network.Wai.Handler.Warp
+import Network.Wai.Middleware.Cors
 
 import API
 import Control
@@ -30,8 +31,8 @@ main = do
     when batLow $ do
         update state $
             SetBatteryBlock True
-    finally (run 8080 (app state))
-            (closeAcidState state)
+    finally (run 8080 (simpleCors $ app state))
+        (closeAcidState state)
 
 app :: AcidState Schema -> Application
 app state = serve (Proxy :: Proxy API) (enter (runReaderTNat state) server)
@@ -69,8 +70,16 @@ batteryBlockServer = batteryBlockGET :<|> batteryBlockPUT
 
 -- Implementations
 
-pumpsGET :: MyHandler (Map.IntMap Pump)
-pumpsGET = queryState GetPumps
+pumpsGET :: Maybe String -> MyHandler ([PostReturn Pump])
+pumpsGET host = do
+    pumps <- queryState GetPumps
+    pure . Map.elems $ Map.mapWithKey (\k p ->
+        let endpoint = Proxy :: Proxy ("pumps"
+                                    :> Capture "id" Int
+                                    :> Get '[JSON] Pump)
+            uri = apiURI endpoint k
+        in  postReturn uri host (Just k) p
+                          ) pumps
 
 pumpsPOST :: Maybe String -> Pump -> MyHandler (PostReturn Pump)
 pumpsPOST host pump = do

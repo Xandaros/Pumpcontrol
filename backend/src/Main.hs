@@ -35,9 +35,10 @@ main = do
         (closeAcidState state)
 
 app :: AcidState Schema -> Application
-app state = serve (Proxy :: Proxy API) (enter (runReaderTNat state) server)
+app state = serve (Proxy :: Proxy API) $
+    (enter (runReaderTNat state) server) :<|> frontend
 
-server :: MyServer API
+server :: MyServer Backend
 server = pumpsServer :<|> batteryServer
 
 -- Routing
@@ -69,6 +70,9 @@ batteryBlockServer :: MyServer BatteryBlockAPI
 batteryBlockServer = batteryBlockGET :<|> batteryBlockPUT
 
 -- Implementations
+
+frontend :: Server Frontend
+frontend = serveDirectory "../frontend/dist/build/frontend/frontend.jsexe"
 
 pumpsGET :: Maybe String -> MyHandler ([PostReturn Pump])
 pumpsGET host = do

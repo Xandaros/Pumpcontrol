@@ -7,8 +7,12 @@ import Servant
 
 import Types
 
-type API = "pumps"   :> PumpsAPI
-      :<|> "battery" :> BatteryAPI
+type API = Backend :<|> Frontend
+
+type Backend = "pumps"   :> PumpsAPI
+          :<|> "battery" :> BatteryAPI
+
+type Frontend = Raw
 
 type PumpsAPI = Header "Host" String :> Get '[JSON] ([PostReturn  Pump])
            :<|> Header "Host" String

@@ -1,0 +1,21 @@
+.content {
+	padding-left: 240px;
+}
+
+@media only screen and (max-width: 992px) {
+	.content {
+		padding-left: 0px;
+	}
+}
+
+.pointer {
+	cursor: pointer;
+}
+
+.full-height {
+	height: 100%;
+}
+
+html, body {
+	height: 100%;
+}
